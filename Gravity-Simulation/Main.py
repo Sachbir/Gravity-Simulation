@@ -3,6 +3,7 @@ import sys
 from time import time
 
 import config
+from Object import Object
 
 
 class Simulation:
@@ -16,19 +17,23 @@ class Simulation:
 
         frame_num = 0
 
+        o = Object()
+
         while True:
 
-            frame_start_time = time()
+            # frame_start_time = time()
 
             Simulation.event_processing()
 
             screen.fill((225, 225, 225))
 
+            o.render()
+
             pygame.display.flip()
             frame_num += 1
 
             clock.tick(config.UPS_max)
-            Simulation.measure_update_time(frame_start_time)
+            # Simulation.measure_update_time(frame_start_time)
 
     @staticmethod
     def event_processing():
