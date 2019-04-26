@@ -8,8 +8,13 @@ from Object import Object
 
 class Simulation:
 
-    @staticmethod
-    def run():
+    def __init__(self):
+
+        self.objects = []
+        for i in range(2):
+            self.objects.append(Object())
+
+    def run(self):
 
         pygame.init()
         clock = pygame.time.Clock()
@@ -17,17 +22,18 @@ class Simulation:
 
         frame_num = 0
 
-        o = Object()
-
         while True:
 
             # frame_start_time = time()
 
-            Simulation.event_processing()
+            self.event_processing()
 
-            screen.fill((225, 225, 225))
+            screen.fill((0, 0, 0))
 
-            o.render()
+            for o in self.objects:
+                o.calculate(self.objects)
+            for o in self.objects:
+                o.update_and_render()
 
             pygame.display.flip()
             frame_num += 1
@@ -35,8 +41,7 @@ class Simulation:
             clock.tick(config.UPS_max)
             # Simulation.measure_update_time(frame_start_time)
 
-    @staticmethod
-    def event_processing():
+    def event_processing(self):
         """Checks for any and all events occurring during runtime"""
 
         if config.frame_counter % 3 == 0:
@@ -44,7 +49,11 @@ class Simulation:
                 if (event.type == pygame.QUIT or
                         (event.type == pygame.KEYDOWN and event.key == pygame.K_q)):  # End simulation
                     sys.exit(0)
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        self.__init__()
 
+    # noinspection PyPep8Naming
     @staticmethod
     def measure_update_time(time_start):
         """Takes the beginning and end time of the cycle to determine how fast the system is actually operating at"""
@@ -66,4 +75,5 @@ class Simulation:
             config.frame_counter = 0
 
 
-Simulation.run()
+sim = Simulation()
+sim.run()

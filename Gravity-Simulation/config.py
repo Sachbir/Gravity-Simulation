@@ -7,3 +7,4 @@ frame_counter = 0
 
 # Other
 window_size = 960, 720
+gravitational_constant = 9.81
