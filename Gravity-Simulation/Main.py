@@ -14,6 +14,9 @@ class Simulation:
         for i in range(2):
             self.objects.append(Object())
 
+        self.dict = {}
+        self.set_event_dict()
+
     def run(self):
 
         pygame.init()
@@ -31,6 +34,8 @@ class Simulation:
             screen.fill((0, 0, 0))
 
             for o in self.objects:
+                o.check_for_collisions(self.objects)
+            for o in self.objects:
                 o.calculate(self.objects)
             for o in self.objects:
                 o.update_and_render()
@@ -46,12 +51,10 @@ class Simulation:
 
         if config.frame_counter % 3 == 0:
             for event in pygame.event.get():
-                if (event.type == pygame.QUIT or
-                        (event.type == pygame.KEYDOWN and event.key == pygame.K_q)):  # End simulation
+                if event.type == pygame.QUIT:  # End simulation
                     sys.exit(0)
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE:
-                        self.__init__()
+                    self.get_dict(event.key)
 
     # noinspection PyPep8Naming
     @staticmethod
@@ -73,6 +76,15 @@ class Simulation:
             print("Measured UPS: " + str(config.UPS_measurement_tracker / config.frames_to_measure))
             config.UPS_measurement_tracker = 0
             config.frame_counter = 0
+
+    def get_dict(self, key):
+
+        self.dict[key]()
+
+    def set_event_dict(self):
+
+        self.dict[pygame.K_SPACE] = self.__init__
+        self.dict[pygame.K_q] = sys.exit
 
 
 sim = Simulation()

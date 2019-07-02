@@ -17,21 +17,18 @@ class Object:
         self.coordinates = (int(uniform(0, config.window_size[0])),
                             int(uniform(0, config.window_size[1])))
 
-        # self.mass = uniform(0, Object.max_mass)
-        # self.density = uniform(0, Object.max_density)
-
+        # self.mass = uniform(10, Object.max_mass)
+        # self.density = uniform(10, Object.max_density)
         self.mass = self.density = 50
 
-        # volume = mass / density
-        volume = self.mass / self.density
-        # V = 4 / 3 * pi * r ^ 3
-        # r = (V * 3 / 4 / pi) ^ (1/3)
-        self.radius = (volume * 3 / 4 / pi) ** (1 / 3)
-        self.radius *= 10
-        self.radius = int(self.radius)
+        self.calculate_radius()
 
         self.motion_vector = (uniform(-1, 1),
                               uniform(-1, 1))
+
+        self.collision_box = None
+
+        # self.is_dead = False
 
     def calculate(self, objects):
 
@@ -82,6 +79,15 @@ class Object:
 
         return value, value, value
 
+    def calculate_radius(self):
+
+        volume = self.mass / self.density
+        # V = 4 / 3 * pi * r ^ 3
+        # r = (V * 3 / 4 / pi) ^ (1/3)
+        self.radius = (volume * 3 / 4 / pi) ** (1 / 3)
+        self.radius *= 10
+        self.radius = int(self.radius)
+
     @staticmethod
     def add_tuple(a, b):
 
@@ -110,6 +116,31 @@ class Object:
         delta_y = obj.coordinates[1] - self.coordinates[1]
 
         return sqrt(delta_x ** 2 + delta_y ** 2)
+
+    def collides_with(self, obj):
+
+        if self == obj:
+            return False
+
+        combined_radius = self.radius + obj.radius
+        dist_between = Object.get_distance_between(self.coordinates, obj.coordinates)
+        if combined_radius > dist_between:
+            return True
+        return False
+
+    def check_for_collisions(self, objects):
+
+        for o in objects:
+            if self.collides_with(o):
+                self.mass += o.mass
+                self.motion_vector = ((self.motion_vector[0] + o.motion_vector[0]) / 2,
+                                      (self.motion_vector[1] + o.motion_vector[1]) / 2)
+                self.calculate_radius()
+                # objects.remove(o)
+                # o.mass = 0
+                o.coordinates = (-1000000, -1000000)
+                # TODO: replace this lazy solution (moving far away) with actually removing the object
+                # o.isDead = True
 
     @staticmethod
     def get_distance_between(a, b):
