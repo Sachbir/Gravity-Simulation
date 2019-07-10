@@ -14,13 +14,14 @@ class Object:
 
     def __init__(self):
 
-        self.coordinates = (int(uniform(0, config.window_size[0])),
-                            int(uniform(0, config.window_size[1])))
+        self.coordinates = (int(uniform(config.window_size[0] / 4, 3 * config.window_size[0] / 4)),
+                            int(uniform(config.window_size[0] / 4, 3 * config.window_size[1] / 4)))
 
         # self.mass = uniform(10, Object.max_mass)
         # self.density = uniform(10, Object.max_density)
         self.mass = self.density = 50
 
+        self.radius = 5
         self.calculate_radius()
 
         self.motion_vector = (uniform(-1, 1),
@@ -28,36 +29,42 @@ class Object:
 
         self.collision_box = None
 
-        # self.is_dead = False
-
     def calculate(self, objects):
 
-        # Simplifying down to a 2-body system first
+        net_acceleration = 0, 0
 
-        other_object = objects[0]
-        if other_object == self:
-            other_object = objects[1]
+        for o in objects:
+            vector = self.get_acceleration_vector(o)
+            net_acceleration = (net_acceleration[0] + vector[0],
+                                net_acceleration[1] + vector[1])
 
-        dist_between_objects = self.distance_to(other_object)
+        self.motion_vector = (self.motion_vector[0] + net_acceleration[0],
+                              self.motion_vector[1] + net_acceleration[1])
 
-        g_force = config.gravitational_constant * self.mass * other_object.mass / dist_between_objects ** 2
-        acceleration = g_force / self.mass
+    def get_acceleration_vector(self, o):
 
-        vector_to_other_object = (other_object.coordinates[0] - self.coordinates[0],
-                                  other_object.coordinates[1] - self.coordinates[1])
-        vector_to_other_object = Object.get_unit_vector(vector_to_other_object)
+        # cos(theta) = adj / hyp
+        # hyp = sqrt(x^2 + y^2)
+        # cos(theta) = y / hyp
 
-        pygame.draw.line(pygame.display.get_surface(),
-                         (255, 255, 255),
-                         Object.round_tuple(self.coordinates),
-                         Object.round_tuple(Object.add_tuple(self.coordinates, vector_to_other_object)))
+        if self == o:
+            return 0, 0
 
-        vector_from_gravity = Object.scale_vector(vector_to_other_object, acceleration)
+        try:
+            relative_coordinates = (o.coordinates[0] - self.coordinates[0],
+                                    o.coordinates[1] - self.coordinates[1])
 
-        # vector_from_gravity = map(lambda x: x * config.gravitational_constant, vector_to_other_object)
+            hypotenuse = sqrt(relative_coordinates[0] ** 2 + relative_coordinates[1] ** 2)
 
-        self.motion_vector = Object.add_tuple(self.motion_vector,
-                                              vector_from_gravity)
+            magnitude = self.get_acceleration_due_to_gravity_from(o)
+
+            acceleration_x = magnitude * relative_coordinates[0] / hypotenuse
+            acceleration_y = magnitude * relative_coordinates[1] / hypotenuse
+
+            return acceleration_x, acceleration_y
+
+        except ZeroDivisionError:
+            return 0, 0
 
     def update_and_render(self):
 
@@ -99,14 +106,17 @@ class Object:
 
         return round(x[0]), round(x[1])
 
-    # for 2-body system
-    def get_acceleration_due_to_gravity_from(self, total_mass):
+    def get_acceleration_due_to_gravity_from(self, obj):
 
-        # F = G * m1 * m2 / r ** 2
+        #      F1 = G * m1 * m2 / r ** 2
+        # m1 * a1 = G * m1 * m2 / r ** 2
+        #      a1 = G * m2 / r ** 2
 
-        dist_between = Object.get_distance_between(self.coordinates, total_mass.coordinates)
+        dist_between = Object.get_distance_between(self.coordinates, obj.coordinates)
+        if dist_between > 10 * config.window_size[0]:
+            return 0
 
-        acceleration_due_to_gravity = config.gravitational_constant * total_mass.mass / self.mass / dist_between ** 2
+        acceleration_due_to_gravity = config.gravitational_constant * obj.mass / dist_between ** 2
 
         return acceleration_due_to_gravity
 
@@ -133,8 +143,12 @@ class Object:
         for o in objects:
             if self.collides_with(o):
                 self.mass += o.mass
-                self.motion_vector = ((self.motion_vector[0] + o.motion_vector[0]) / 2,
-                                      (self.motion_vector[1] + o.motion_vector[1]) / 2)
+
+                self_weighting = self.mass / (self.mass + o.mass)
+                o_weighting = o.mass / (self.mass + o.mass)
+
+                self.motion_vector = (self.motion_vector[0] * self_weighting + o.motion_vector[0] * o_weighting,
+                                      self.motion_vector[1] * self_weighting + o.motion_vector[1] * o_weighting)
                 self.calculate_radius()
                 # objects.remove(o)
                 # o.mass = 0

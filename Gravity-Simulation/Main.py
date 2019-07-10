@@ -3,15 +3,18 @@ import sys
 from time import time
 
 import config
-from Object import Object
+# from Object import Object
+from Object2 import Object
 
 
 class Simulation:
 
     def __init__(self):
 
+        num_obj = 4
+
         self.objects = []
-        for i in range(2):
+        for i in range(num_obj):
             self.objects.append(Object())
 
         self.dict = {}
