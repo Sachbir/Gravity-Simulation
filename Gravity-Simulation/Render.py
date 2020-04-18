@@ -22,7 +22,7 @@ class Render:
         Render.screen_right = Render.width / 2
 
     @staticmethod
-    def convert_point(point):
+    def convert_to_pygame(point):
 
         center_x = Render.width / 2
         center_y = Render.height / 2
@@ -31,16 +31,25 @@ class Render:
                 int(center_y - point[1]))
 
     @staticmethod
+    def convert_to_renderer(point):
+
+        center_x = Render.width / 2
+        center_y = Render.height / 2
+
+        return (-int(center_x - point[0]),
+                int(center_y - point[1]))
+
+    @staticmethod
     def draw_circle(position, radius=5, color=(0, 0, 0), border=0):
 
-        pygame.draw.circle(pygame.display.get_surface(), color, Render.convert_point(position), radius, border)
+        pygame.draw.circle(pygame.display.get_surface(), color, Render.convert_to_pygame(position), radius, border)
 
     @staticmethod
     def draw_rect(rect, color=(0, 0, 0), border=0):
 
         pos = rect[0]
         pos = pos[0], pos[1] + rect[1][1] - 1
-        pos = Render.convert_point(pos)
+        pos = Render.convert_to_pygame(pos)
 
         rect = pos, rect[1]
 
@@ -49,8 +58,8 @@ class Render:
     @staticmethod
     def draw_line(p1, p2, color=(0, 0, 0), border=1):
 
-        p1 = Render.convert_point(p1)
-        p2 = Render.convert_point(p2)
+        p1 = Render.convert_to_pygame(p1)
+        p2 = Render.convert_to_pygame(p2)
 
         pygame.draw.line(pygame.display.get_surface(),
                          color,

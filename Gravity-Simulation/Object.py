@@ -12,10 +12,13 @@ class Object:
     max_mass = 100
     max_density = 100
 
-    def __init__(self):
+    def __init__(self, position=None):
 
-        self.coordinates = (int(uniform(config.window_size[0] / 4, 3 * config.window_size[0] / 4)),
-                            int(uniform(config.window_size[0] / 4, 3 * config.window_size[1] / 4)))
+        if position is None:
+            self.position = (int(uniform(config.window_size[0] / 4, 3 * config.window_size[0] / 4)),
+                             int(uniform(config.window_size[0] / 4, 3 * config.window_size[1] / 4)))
+        else:
+            self.position = position
 
         # self.mass = uniform(10, Object.max_mass)
         # self.density = uniform(10, Object.max_density)
@@ -41,6 +44,25 @@ class Object:
         self.motion_vector = (self.motion_vector[0] + net_acceleration[0],
                               self.motion_vector[1] + net_acceleration[1])
 
+    def update_velocity(self, allBodies):
+
+        for otherBody in allBodies:
+            squareDist = 0
+            forceDir = Object.normalize_vector(Object.subtract_vectors(otherBody.position, self.position))
+            force = forceDir * config.gravitational_constant * self.mass * otherBody.mass / (2 ** 2)
+
+    @staticmethod
+    def subtract_vectors(a, b):
+
+        if len(a) != len(b):
+            raise ArithmeticError('Cannot subtract 2 tuples of different lengths')
+
+        c = []
+        for i in range(len(a)):
+            c.append(a[i] - b[i])
+
+        return tuple(c)
+
     def get_acceleration_vector(self, o):
 
         # cos(theta) = adj / hyp
@@ -51,15 +73,15 @@ class Object:
             return 0, 0
 
         try:
-            relative_coordinates = (o.coordinates[0] - self.coordinates[0],
-                                    o.coordinates[1] - self.coordinates[1])
+            relative_position = (o.position[0] - self.position[0],
+                                    o.position[1] - self.position[1])
 
-            hypotenuse = sqrt(relative_coordinates[0] ** 2 + relative_coordinates[1] ** 2)
+            hypotenuse = sqrt(relative_position[0] ** 2 + relative_position[1] ** 2)
 
             magnitude = self.get_acceleration_due_to_gravity_from(o)
 
-            acceleration_x = magnitude * relative_coordinates[0] / hypotenuse
-            acceleration_y = magnitude * relative_coordinates[1] / hypotenuse
+            acceleration_x = magnitude * relative_position[0] / hypotenuse
+            acceleration_y = magnitude * relative_position[1] / hypotenuse
 
             return acceleration_x, acceleration_y
 
@@ -68,12 +90,12 @@ class Object:
 
     def update_and_render(self):
 
-        self.coordinates = Object.add_tuple(self.coordinates,
-                                            self.motion_vector)
+        self.position = Object.add_tuple(self.position,
+                                         self.motion_vector)
 
         pygame.draw.circle(pygame.display.get_surface(),
                            self.get_color(),
-                           Object.round_tuple(self.coordinates),
+                           Object.round_tuple(self.position),
                            self.radius)
 
     def get_color(self):
@@ -112,7 +134,7 @@ class Object:
         # m1 * a1 = G * m1 * m2 / r ** 2
         #      a1 = G * m2 / r ** 2
 
-        dist_between = Object.get_distance_between(self.coordinates, obj.coordinates)
+        dist_between = Object.get_distance_between(self.position, obj.position)
         if dist_between > 10 * config.window_size[0]:
             return 0
 
@@ -122,8 +144,8 @@ class Object:
 
     def distance_to(self, obj):
 
-        delta_x = obj.coordinates[0] - self.coordinates[0]
-        delta_y = obj.coordinates[1] - self.coordinates[1]
+        delta_x = obj.position[0] - self.position[0]
+        delta_y = obj.position[1] - self.position[1]
 
         return sqrt(delta_x ** 2 + delta_y ** 2)
 
@@ -133,7 +155,7 @@ class Object:
             return False
 
         combined_radius = self.radius + obj.radius
-        dist_between = Object.get_distance_between(self.coordinates, obj.coordinates)
+        dist_between = Object.get_distance_between(self.position, obj.position)
         if combined_radius > dist_between:
             return True
         return False
@@ -152,7 +174,7 @@ class Object:
                 self.calculate_radius()
                 # objects.remove(o)
                 # o.mass = 0
-                o.coordinates = (-1000000, -1000000)
+                o.position = (-1000000, -1000000)
                 # TODO: replace this lazy solution (moving far away) with actually removing the object
                 # o.isDead = True
 
@@ -165,7 +187,7 @@ class Object:
         return sqrt(delta_x ** 2 + delta_y ** 2)
 
     @staticmethod
-    def get_unit_vector(vector):
+    def normalize_vector(vector):
         """Takes a given vector and normalizes it to a magnitude of 1"""
 
         vector_magnitude = sqrt(vector[0] ** 2 + vector[1] ** 2)

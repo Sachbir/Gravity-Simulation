@@ -3,28 +3,35 @@ import sys
 from time import time
 
 import config
-# from Object import Object
-from Object2 import Object
+from Object import Object
+from Body import Body
+from Render import Render
 
 
 class Simulation:
 
+    pygame.init()
+
     def __init__(self):
 
-        num_obj = 4
+        self.clock = pygame.time.Clock()
+        self.screen = pygame.display.set_mode(config.window_size)
+
+        Render.set_surface(pygame.display.get_surface())
+
+        num_obj = 1
+
+        self.isPaused = False
 
         self.objects = []
         for i in range(num_obj):
-            self.objects.append(Object())
+            # self.objects.append(Object())
+            self.objects.append(Body())
 
         self.dict = {}
         self.set_event_dict()
 
     def run(self):
-
-        pygame.init()
-        clock = pygame.time.Clock()
-        screen = pygame.display.set_mode(config.window_size)
 
         frame_num = 0
 
@@ -32,21 +39,33 @@ class Simulation:
 
             # frame_start_time = time()
 
-            self.event_processing()
-
-            screen.fill((0, 0, 0))
-
-            for o in self.objects:
-                o.check_for_collisions(self.objects)
-            for o in self.objects:
-                o.calculate(self.objects)
-            for o in self.objects:
-                o.update_and_render()
-
+            self.clock.tick(config.UPS_max)
             pygame.display.flip()
             frame_num += 1
 
-            clock.tick(config.UPS_max)
+            # frame_start_time = time()
+
+            self.event_processing()
+
+            if self.isPaused:
+                continue
+
+            self.screen.fill((0, 0, 0))
+
+            # for o in self.objects:
+            #     o.check_for_collisions(self.objects)
+            # for o in self.objects:
+            #     o.calculate(self.objects)
+            # for o in self.objects:
+            #     o.update_and_render()
+
+            for o in self.objects:
+                o.update_velocity()
+            for o in self.objects:
+                o.update_position()
+            for o in self.objects:
+                o.render()
+
             # Simulation.measure_update_time(frame_start_time)
 
     def event_processing(self):
@@ -58,6 +77,12 @@ class Simulation:
                     sys.exit(0)
                 elif event.type == pygame.KEYDOWN:
                     self.get_dict(event.key)
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.isPaused:
+                    mouse_pos = pygame.mouse.get_pos()
+                    pos = Render.convert_to_renderer(mouse_pos)
+                    o = Body(pos)
+                    o.render()
+                    self.objects.append(o)
 
     # noinspection PyPep8Naming
     @staticmethod
@@ -82,13 +107,25 @@ class Simulation:
 
     def get_dict(self, key):
 
-        self.dict[key]()
+        try:
+            self.dict[key]()
+        except KeyError:
+            pass
 
     def set_event_dict(self):
 
-        self.dict[pygame.K_SPACE] = self.__init__
+        self.dict[pygame.K_SPACE] = self.toggle_pause
         self.dict[pygame.K_q] = sys.exit
+        self.dict[pygame.K_r] = self.__init__
+
+    def toggle_pause(self):
+
+        self.isPaused = not self.isPaused
 
 
 sim = Simulation()
 sim.run()
+
+# References
+# https://stackoverflow.com/questions/23841128/pygame-how-to-check-mouse-coordinates
+# https://stackoverflow.com/questions/12150957/pygame-action-when-mouse-click-on-rect
