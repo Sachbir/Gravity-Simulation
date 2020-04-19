@@ -1,4 +1,5 @@
 import pygame
+from copy import deepcopy
 
 
 class Render:
@@ -11,33 +12,35 @@ class Render:
     screen_left = 0
     screen_right = 0
 
+    offset = 0, 0
+
     @staticmethod
     def set_surface(surface):
 
         Render.width, Render.height = surface.get_size()
 
-        Render.screen_top = Render.height / 2
-        Render.screen_bottom = -Render.height / 2
-        Render.screen_left = -Render.width / 2
-        Render.screen_right = Render.width / 2
+        Render.screen_top = 0
+        Render.screen_bottom = Render.height
+        Render.screen_left = 0
+        Render.screen_right = Render.width
+
+        Render.offset = 0, 0
 
     @staticmethod
     def convert_to_pygame(point):
 
-        center_x = Render.width / 2
-        center_y = Render.height / 2
+        x = point[0] + Render.offset[0]
+        y = point[1] + Render.offset[1]
 
-        return (int(center_x + point[0]),
-                int(center_y - point[1]))
+        return int(x), int(y)
 
     @staticmethod
     def convert_to_renderer(point):
 
-        center_x = Render.width / 2
-        center_y = Render.height / 2
+        x = point[0] - Render.offset[0]
+        y = point[1] - Render.offset[1]
 
-        return (-int(center_x - point[0]),
-                int(center_y - point[1]))
+        return int(x), int(y)
 
     @staticmethod
     def draw_circle(position, radius=5, color=(0, 0, 0), border=0):
@@ -66,3 +69,40 @@ class Render:
                          p1,
                          p2,
                          border)
+
+    @staticmethod
+    def draw_lines(points, color=(0, 0, 0)):
+
+        converted_points = deepcopy(points)
+
+        for i in range(len(converted_points)):
+            converted_points[i] = Render.convert_to_pygame(converted_points[i])
+
+        pygame.draw.lines(pygame.display.get_surface(),
+                          color,
+                          False,
+                          converted_points)
+
+    @staticmethod
+    def center_on(pos):
+
+        if pos is None:
+            Render.offset = 0, 0
+            return
+
+        x = Render.width / 2 - pos[0]
+        y = Render.height / 2 - pos[1]
+
+        Render.offset = x, y
+
+    @staticmethod
+    def calc_offset(pos):
+
+        if pos is None:
+            Render.offset = 0, 0
+            return
+
+        x = Render.width / 2 - pos[0]
+        y = Render.height / 2 - pos[1]
+
+        return x, y

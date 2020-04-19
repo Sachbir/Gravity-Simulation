@@ -3,8 +3,7 @@ import sys
 from time import time
 
 import config
-from Object import Object
-from Body import Body
+from Body import Body, Calc
 from Render import Render
 
 
@@ -23,13 +22,27 @@ class Simulation:
 
         self.isPaused = False
 
-        self.objects = []
-        for i in range(num_obj):
-            # self.objects.append(Object())
-            self.objects.append(Body())
+        self.allBodies = []
+        # for i in range(num_obj):
+        b = Body()
+        b.mass = 200
+        b.radius = 10
+        b.position = config.window_size[0] / 2 - 400, config.window_size[1] / 2
+        b.position = 0, 0
+        self.allBodies.append(b)
+
+        b = Body()
+        b.mass = 10
+        b.radius = 5
+        b.position = config.window_size[0] / 2 - 400, config.window_size[1] / 2
+        b.position = 100, 100
+        b.velocity = 10, 0
+        self.allBodies.append(b)
 
         self.dict = {}
         self.set_event_dict()
+
+        self.object_selected = None
 
     def run(self):
 
@@ -47,26 +60,29 @@ class Simulation:
 
             self.event_processing()
 
-            if self.isPaused:
-                continue
-
             self.screen.fill((0, 0, 0))
 
-            # for o in self.objects:
-            #     o.check_for_collisions(self.objects)
-            # for o in self.objects:
-            #     o.calculate(self.objects)
-            # for o in self.objects:
-            #     o.update_and_render()
+            if not self.isPaused:
+                for o in self.allBodies:
+                    o.update_velocity(self.allBodies)
+                for o in self.allBodies:
+                    o.update_position()
+            # else:
+            self.draw_future_paths()
 
-            for o in self.objects:
-                o.update_velocity()
-            for o in self.objects:
-                o.update_position()
-            for o in self.objects:
-                o.render()
+            self.render_bodies()
 
             # Simulation.measure_update_time(frame_start_time)
+
+    def render_bodies(self):
+
+        if self.object_selected is not None:
+            Render.center_on(self.object_selected.position)
+        else:
+            Render.center_on((0, 0))
+
+        for o in self.allBodies:
+            o.render()
 
     def event_processing(self):
         """Checks for any and all events occurring during runtime"""
@@ -77,12 +93,24 @@ class Simulation:
                     sys.exit(0)
                 elif event.type == pygame.KEYDOWN:
                     self.get_dict(event.key)
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.isPaused:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.isPaused:
                     mouse_pos = pygame.mouse.get_pos()
                     pos = Render.convert_to_renderer(mouse_pos)
-                    o = Body(pos)
-                    o.render()
-                    self.objects.append(o)
+
+                    flag = 0
+
+                    for body in self.allBodies:
+                        if body.collide_point(pos):
+                            flag = 1
+                            self.object_selected = body
+                            self.render_bodies()
+                            break
+
+                    # No collision: Make new body
+                    if flag == 0:
+                        o = Body(pos)
+                        o.render()
+                        self.allBodies.append(o)
 
     # noinspection PyPep8Naming
     @staticmethod
@@ -121,6 +149,34 @@ class Simulation:
     def toggle_pause(self):
 
         self.isPaused = not self.isPaused
+
+    def draw_future_paths(self):
+
+        num_predictions = 100
+
+        for body in self.allBodies:
+            body.future_velocities = []
+            body.future_positions = []
+
+        for i in range(num_predictions):
+            for body in self.allBodies:
+                body.calc_future_velocity(self.allBodies, i)
+                body.calc_future_position(i)
+
+        if self.object_selected is not None:
+            for body in self.allBodies:
+                if body is self.object_selected:
+                    continue
+                for i in range(len(body.future_positions)):
+                    future_offset = Calc.sub_vector2(Render.offset,
+                                                     Render.calc_offset(self.object_selected.future_positions[i]))
+
+                    body.future_positions[i] = Calc.sub_vector2(body.future_positions[i],
+                                                                future_offset)
+
+        for body in self.allBodies:
+            if body is not self.object_selected:
+                body.render_paths()
 
 
 sim = Simulation()
