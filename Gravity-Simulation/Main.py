@@ -5,6 +5,7 @@ from time import time
 import config
 from Body import Body, Calc
 from Render import Render
+from UI import UIBar
 
 
 class Simulation:
@@ -17,10 +18,11 @@ class Simulation:
         self.screen = pygame.display.set_mode(config.window_size)
 
         Render.set_surface(pygame.display.get_surface())
+        UIBar.set_surface(pygame.display.get_surface())
 
         num_obj = 1
 
-        self.isPaused = False
+        self.isPaused = True
 
         self.allBodies = []
         # for i in range(num_obj):
@@ -29,6 +31,7 @@ class Simulation:
         b.radius = 10
         b.position = config.window_size[0] / 2 - 400, config.window_size[1] / 2
         b.position = 0, 0
+        b.name = "Body_" + str(len(self.allBodies))
         self.allBodies.append(b)
 
         b = Body()
@@ -43,8 +46,17 @@ class Simulation:
         self.set_event_dict()
 
         self.object_selected = None
+        self.details_bar = None
 
     def run(self):
+
+        barWidth = 250
+        barHeight = config.window_size[1]
+
+        barX = config.window_size[0] - barWidth
+        barY = 0
+
+        self.details_bar = UIBar("Details", barX, barY, barWidth, barHeight)
 
         frame_num = 0
 
@@ -71,6 +83,8 @@ class Simulation:
             self.draw_future_paths()
 
             self.render_bodies()
+            if self.isPaused:
+                self.details_bar.render()
 
             # Simulation.measure_update_time(frame_start_time)
 
@@ -111,6 +125,7 @@ class Simulation:
                         o = Body(pos)
                         o.render()
                         self.allBodies.append(o)
+                    self.details_bar.update(self.selected_body)
 
     # noinspection PyPep8Naming
     @staticmethod
