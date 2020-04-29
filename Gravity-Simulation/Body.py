@@ -13,15 +13,14 @@ class Body:
     min_color = 100
     max_color = 255
 
+    change_rate = 1.1
+
     def __init__(self, position=None):
 
         self.color = 255, 255, 255
         # self.color = 0, 0, 0
 
         self.mass = int(uniform(1, 5))
-        self.radius = 4
-        self.velocity = (uniform(-2, 2),
-                         uniform(-2, 2))
         self.velocity = 0, 0
 
         if position is not None:
@@ -32,6 +31,20 @@ class Body:
 
         self.future_positions = []
         self.future_velocities = []
+
+        self.name = ""
+
+    @property
+    def mass(self):
+        return self.__mass
+
+    @mass.setter
+    def mass(self, mass):
+
+        if mass < 0:
+            return
+        self.__mass = mass
+        self.radius = (self.mass * 10) ** (1.0 / 3)
 
     def update_velocity(self, all_bodies):
 
@@ -64,7 +77,7 @@ class Body:
 
     def render(self):
 
-        Render.draw_circle(self.position, color=self.color, radius=self.radius)
+        Render.draw_circle(self.position, color=self.color, radius=int(self.radius))
 
     def collide_point(self, point):
 
@@ -125,7 +138,66 @@ class Body:
 
     def render_paths(self):
 
-        Render.draw_lines(self.future_positions, color=(255, 255, 255))
+        Render.draw_lines(self.future_positions, color=(55, 55, 55))
+
+    # Methods for externally editing body properties (mass, velocity)
+
+    def mass_inc(self):
+
+        self.mass *= Body.change_rate
+
+    def mass_dec(self):
+
+        if self.mass > 0.1:
+            self.mass /= Body.change_rate
+
+    def vel_x_inc(self):
+
+        vel_x = Body.__inc_prop_val(self.velocity[0])
+        self.velocity = (vel_x, self.velocity[1])
+
+    def vel_x_dec(self):
+
+        vel_x = Body.__dec_prop_val(self.velocity[0])
+        self.velocity = (vel_x, self.velocity[1])
+
+    def vel_y_inc(self):
+
+        vel_y = Body.__inc_prop_val(self.velocity[1])
+        self.velocity = (self.velocity[0], vel_y)
+
+    def vel_y_dec(self):
+
+        vel_y = Body.__dec_prop_val(self.velocity[1])
+        self.velocity = (self.velocity[0], vel_y)
+
+    @staticmethod
+    def __inc_prop_val(x):
+        # used by external functions to modify properties (mass and velocity)
+        # function to increase values
+        # if negative, divide by the change rate (shrink), if positive, multiply by the change rate (grow)
+        # if it's a small value, then add so it can cross from negative to positive
+
+        if x > 0.1:
+            return x * Body.change_rate
+        elif x < -0.1:
+            return x / Body.change_rate
+        else:
+            return x + 0.1
+
+    @staticmethod
+    def __dec_prop_val(x):
+        # used by external functions to modify properties (mass and velocity)
+        # function to decrease values
+        # if positive, divide by the change rate (shrink), if negative, multiply by the change rate (grow)
+        # if it's a small value, then subtract so it can cross from positive to negative
+
+        if x > 0.1:
+            return x / Body.change_rate
+        elif x < -0.1:
+            return x * Body.change_rate
+        else:
+            return x - 0.1
 
 
 class Calc:
