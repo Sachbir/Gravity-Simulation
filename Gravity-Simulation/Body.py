@@ -1,7 +1,6 @@
 # Math is done as if these are 3D objects operating on a 2D plane, as gravity does not work in 2 dimensions
 
-from math import pi, sqrt
-import pygame
+from math import sqrt
 from random import uniform
 
 import config
@@ -10,17 +9,15 @@ from Render import Render
 
 class Body:
 
-    min_color = 100
-    max_color = 255
-
+    radius_size_magnifier = 10
     change_rate = 1.1
 
-    def __init__(self, position=None):
+    def __init__(self, name, position=None):
 
+        self.name = name
         self.color = 255, 255, 255
-        # self.color = 0, 0, 0
 
-        self.mass = int(uniform(1, 5))
+        self.mass = 1
         self.velocity = 0, 0
 
         if position is not None:
@@ -32,8 +29,6 @@ class Body:
         self.future_positions = []
         self.future_velocities = []
 
-        self.name = ""
-
     @property
     def mass(self):
         return self.__mass
@@ -44,7 +39,7 @@ class Body:
         if mass < 0:
             return
         self.__mass = mass
-        self.radius = (self.mass * 10) ** (1.0 / 3)
+        self.radius = (self.mass * Body.radius_size_magnifier) ** (1.0 / 3)
 
     def update_velocity(self, all_bodies):
 
@@ -53,27 +48,32 @@ class Body:
             if otherBody == self:
                 continue
 
-            # F =  dir * G * m1 * m2 / r^2
-            # m1 * a = dir * G * m1 * m2 / r^2
-            # a = dir * G * m2 / r ^ 2
-
-            direction = Calc.sub_vector2(otherBody.position, self.position)
-            direction = Calc.normalize_vector2(direction)
-
-            a = Calc.mul_vector2_by_factor(direction, a)
-            # r is the distance between the 2 bodies' centers
-            r = sqrt((otherBody.position[0] - self.position[0]) ** 2 +
-                     (otherBody.position[1] - self.position[1]) ** 2)
-
-            a = config.gravitational_constant * otherBody.mass / (r ** 2)
-
-            # a = v / t
-            # v = a * t
-            # t = 1/60 (60 ticks/second)
-
+            a = Body.calc_acceleration_due_to_gravity(self.position, otherBody.position, otherBody.mass)
             v = a * config.UPS_max
-
             self.velocity = Calc.add_vector2(self.velocity, v)
+
+    @staticmethod
+    def calc_acceleration_due_to_gravity(self_pos, other_pos, other_mass):
+
+        # F =  dir * G * m1 * m2 / r^2
+        # m1 * a = dir * G * m1 * m2 / r^2
+        # a = dir * G * m2 / r ^ 2
+
+        direction = Calc.subtract_vector2(other_pos, self_pos)
+        direction = Calc.normalize_vector2(direction)
+
+        # r is the distance between the 2 bodies' centers
+        r = sqrt((other_pos[0] - self_pos[0]) ** 2 +
+                 (other_pos[1] - self_pos[1]) ** 2)
+
+        a = config.gravitational_constant * other_mass / (r ** 2)
+        a = Calc.multiply_vector2_by_factor(direction, a)
+
+        # a = v / t
+        # v = a * t
+        # t = 1/60 (60 ticks/second)
+
+        return a
 
     def update_position(self):
 
@@ -112,27 +112,9 @@ class Body:
             if otherBody == self:
                 continue
 
-            # F =  dir * G * m1 * m2 / r^2
-            # m1 * a = dir * G * m1 * m2 / r^2
-            # a = dir * G * m2 / r ^ 2
-
-            direction = Calc.sub_vector2(otherBody.future_positions[i - 1], self.future_positions[i - 1])
-
-            direction = Calc.normalize_vector2(direction)
-
-            a = Calc.mul_vector2_by_factor(direction, a)
-            # r is the distance between the 2 bodies' centers
-            r = sqrt((otherBody.future_positions[i - 1][0] - self.future_positions[i - 1][0]) ** 2 +
-                     (otherBody.future_positions[i - 1][1] - self.future_positions[i - 1][1]) ** 2)
-
-            a = config.gravitational_constant * otherBody.mass / (r ** 2)
-
-            # a = v / t
-            # v = a * t
-            # t = 1/60 (60 ticks/second)
-
+            a = Body.calc_acceleration_due_to_gravity(self.future_positions[i - 1],
+                                                      otherBody.future_positions[i - 1], otherBody.mass)
             v = a * config.UPS_max
-
             velocity = Calc.add_vector2(velocity, v)
 
         self.future_velocities.append(velocity)
@@ -222,7 +204,7 @@ class Calc:
                 a[1] + b[1])
 
     @staticmethod
-    def sub_vector2(a, b):
+    def subtract_vector2(a, b):
 
         return (a[0] - b[0],
                 a[1] - b[1])
@@ -241,7 +223,7 @@ class Calc:
         return unit_vector
 
     @staticmethod
-    def mul_vector2_by_factor(vector, factor):
+    def multiply_vector2_by_factor(vector, factor):
 
         return (vector[0] * factor,
                 vector[1] * factor)

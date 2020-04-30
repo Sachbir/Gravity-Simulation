@@ -7,23 +7,12 @@ class Render:
     width = 0
     height = 0
 
-    screen_top = 0
-    screen_bottom = 0
-    screen_left = 0
-    screen_right = 0
-
     offset = 0, 0
 
     @staticmethod
     def set_surface(surface):
 
         Render.width, Render.height = surface.get_size()
-
-        Render.screen_top = 0
-        Render.screen_bottom = Render.height
-        Render.screen_left = 0
-        Render.screen_right = Render.width
-
         Render.offset = 0, 0
 
     @staticmethod
@@ -40,7 +29,7 @@ class Render:
         x = point[0] - Render.offset[0]
         y = point[1] - Render.offset[1]
 
-        return int(x), int(y)
+        return x, y
 
     @staticmethod
     def draw_circle(position, radius=5, color=(0, 0, 0), border=0):

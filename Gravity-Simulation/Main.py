@@ -21,39 +21,35 @@ class Simulation:
         Render.set_surface(pygame.display.get_surface())
         UIBar.set_surface(pygame.display.get_surface())
 
-        num_obj = 1
-
-        self.isPaused = True
-
         self.allBodies = []
-        b = Body()
+        name = "Body_" + str(len(self.allBodies))
+        b = Body(name, (0, 0))
         b.mass = 100
-        b.radius = 10
-        b.position = config.window_size[0] / 2 - 400, config.window_size[1] / 2
-        b.position = 0, 0
-        b.name = "Body_" + str(len(self.allBodies))
         self.allBodies.append(b)
 
-        self.focus_body = self.allBodies[0]
-        self.selected_body = self.allBodies[0]
-
-        self.dict = {}
+        self.EventDict = {}
         self.set_event_dict()
 
+        self.focus_body = self.allBodies[0]
+        self.selected_body = None
         self.paths_calculated = False
+        self.isPaused = True
+
         self.details_bar = None
+        self.create_UI_bar()
+
+    @property
+    def selected_body(self):
+        return self.__selected_body
+
+    @selected_body.setter
+    def selected_body(self, selected_body):
+
+        self.__selected_body = selected_body
+        if selected_body is not None:
+            self.update_event_dict_for_new_selection()
 
     def run(self):
-
-        barWidth = 250
-        barHeight = config.window_size[1]
-
-        barX = config.window_size[0] - barWidth
-        barY = 0
-
-        self.details_bar = UIBar("Details", barX, barY, barWidth, barHeight)
-
-        frame_num = 0
 
         while True:
 
@@ -61,13 +57,8 @@ class Simulation:
 
             self.clock.tick(config.UPS_max)
             pygame.display.flip()
-            frame_num += 1
-
-            # frame_start_time = time()
 
             self.event_processing()
-
-            self.screen.fill((0, 0, 0))
 
             if not self.isPaused:
                 for o in self.allBodies:
@@ -75,71 +66,60 @@ class Simulation:
                 for o in self.allBodies:
                     o.update_position()
 
-            self.render_bodies()    # TODO: Figure out why this has to be done *before* calculating paths
+            self.screen.fill((0, 0, 0))
+            self.center_frame_on_focus()
             if self.isPaused:
                 self.calc_future_paths()
                 self.draw_future_paths()
-                self.render_bodies()
+
+            for o in self.allBodies:
+                o.render()
 
             if self.isPaused:
                 self.details_bar.render()
 
             # Simulation.measure_update_time(frame_start_time)
 
-    def redraw(self):
-
-        self.screen.fill((0, 0, 0))
-        self.calc_future_paths()
-        self.render_bodies()
-        self.details_bar.render()
-
-    def render_bodies(self):
+    def center_frame_on_focus(self):
 
         if self.focus_body is not None:
             Render.center_on(self.focus_body.position)
         else:
             Render.center_on((0, 0))
 
-        for o in self.allBodies:
-            o.render()
-
     def event_processing(self):
         """Checks for any and all events occurring during runtime"""
 
-        if config.frame_counter % 3 == 0:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:  # End simulation
-                    sys.exit(0)
-                elif event.type == pygame.KEYDOWN:
-                    self.get_dict(event.key)
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.isPaused:
-                    # get coordinates of the click
-                    mouse_pos = pygame.mouse.get_pos()
-                    pos = Render.convert_to_renderer(mouse_pos)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:  # End simulation
+                sys.exit(0)
+            elif event.type == pygame.KEYDOWN:
+                self.handle_event(event.key)
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.isPaused:
+                # get coordinates of the click
+                mouse_pos = pygame.mouse.get_pos()
+                pos = Render.convert_to_renderer(mouse_pos)
 
-                    flag = 0
+                was_body_clicked = False
 
-                    # check for a collision with any body
-                    for body in self.allBodies:
-                        if body.collide_point(pos):
-                            flag = 1
-                            self.selected_body = body
-                            # self.render_bodies()
-                            # if we find a collision, no need to check further
-                            break
+                # check for a collision with any body
+                for body in self.allBodies:
+                    if body.collide_point(pos):
+                        was_body_clicked = True
+                        self.selected_body = body
+                        # self.render_bodies()
+                        # if we find a collision, no need to check further
+                        break
 
-                    # No collision: Make new body
-                    if flag == 0:
-                        o = Body(pos)
-                        o.name = "Body_" + str(len(self.allBodies))
-                        o.render()
-                        self.allBodies.append(o)
-                        self.selected_body = o
-                        self.paths_calculated = False
+                # No collision: Make new body
+                if not was_body_clicked:
+                    name = "Body_" + str(len(self.allBodies))
+                    o = Body(name, pos)
+                    self.allBodies.append(o)
+                    self.selected_body = o
+                    self.paths_calculated = False
 
-                    # if a collision is found...
-                    self.update_event_dict()    # with the new selected body
-                    self.details_bar.update(self.selected_body)
+                self.details_bar.update(self.selected_body)
 
     # noinspection PyPep8Naming
     @staticmethod
@@ -162,28 +142,31 @@ class Simulation:
             config.UPS_measurement_tracker = 0
             config.frame_counter = 0
 
-    def get_dict(self, key):
+    def handle_event(self, key):
 
         try:
-            self.dict[key]()
-            self.update_calc_rendering()
+            self.EventDict[key]()
+            self.paths_calculated = False
+            self.details_bar.update(self.selected_body)
         except KeyError:
+            # Ignore keys that don't exist in the dictionary
             pass
 
     def set_event_dict(self):
 
-        self.dict[pygame.K_SPACE] = self.toggle_pause
-        self.dict[pygame.K_q] = sys.exit
-        self.dict[pygame.K_r] = self.__init__
-        self.dict[pygame.K_f] = self.change_focus_body
+        self.EventDict[pygame.K_SPACE] = self.toggle_pause
+        self.EventDict[pygame.K_q] = sys.exit
+        self.EventDict[pygame.K_r] = self.__init__
+        self.EventDict[pygame.K_f] = self.change_focus_body
 
-    def update_event_dict(self):
-        self.dict[pygame.K_EQUALS] = self.selected_body.mass_inc
-        self.dict[pygame.K_MINUS] = self.selected_body.mass_dec
-        self.dict[pygame.K_UP] = self.selected_body.vel_y_inc
-        self.dict[pygame.K_DOWN] = self.selected_body.vel_y_dec
-        self.dict[pygame.K_LEFT] = self.selected_body.vel_x_dec
-        self.dict[pygame.K_RIGHT] = self.selected_body.vel_x_inc
+    def update_event_dict_for_new_selection(self):
+
+        self.EventDict[pygame.K_EQUALS] = self.selected_body.mass_inc
+        self.EventDict[pygame.K_MINUS] = self.selected_body.mass_dec
+        self.EventDict[pygame.K_UP] = self.selected_body.vel_y_inc
+        self.EventDict[pygame.K_DOWN] = self.selected_body.vel_y_dec
+        self.EventDict[pygame.K_LEFT] = self.selected_body.vel_x_dec
+        self.EventDict[pygame.K_RIGHT] = self.selected_body.vel_x_inc
 
     def change_focus_body(self):
 
@@ -199,13 +182,8 @@ class Simulation:
         temp = deepcopy(self.focus_body)
 
         for body in self.allBodies:
-            body.velocity = Calc.sub_vector2(body.velocity, temp.velocity)
-            body.position = Calc.sub_vector2(body.position, temp.position)
-
-    def update_calc_rendering(self):
-
-        self.paths_calculated = False
-        self.details_bar.update(self.selected_body)
+            body.velocity = Calc.subtract_vector2(body.velocity, temp.velocity)
+            body.position = Calc.subtract_vector2(body.position, temp.position)
 
     def toggle_pause(self):
 
@@ -216,29 +194,28 @@ class Simulation:
 
     def calc_future_paths(self):
 
-        if not self.paths_calculated:
+        if self.paths_calculated:
+            return
 
-            num_predictions = 1000
+        for body in self.allBodies:
+            body.future_velocities = []
+            body.future_positions = []
 
+        for i in range(config.num_future_predictions):
             for body in self.allBodies:
-                body.future_velocities = []
-                body.future_positions = []
+                body.calc_future_velocity(self.allBodies, i)
+                body.calc_future_position(i)
 
-            for i in range(num_predictions):
-                for body in self.allBodies:
-                    body.calc_future_velocity(self.allBodies, i)
-                    body.calc_future_position(i)
+        if self.focus_body is not None:
+            for body in self.allBodies:
+                if body is self.focus_body:
+                    continue
+                for i in range(len(body.future_positions)):
+                    future_offset = Calc.subtract_vector2(Render.offset,
+                                                          Render.calc_offset(self.focus_body.future_positions[i]))
 
-            if self.focus_body is not None:
-                for body in self.allBodies:
-                    if body is self.focus_body:
-                        continue
-                    for i in range(len(body.future_positions)):
-                        future_offset = Calc.sub_vector2(Render.offset,
-                                                         Render.calc_offset(self.focus_body.future_positions[i]))
-
-                        body.future_positions[i] = Calc.sub_vector2(body.future_positions[i],
-                                                                    future_offset)
+                    body.future_positions[i] = Calc.subtract_vector2(body.future_positions[i],
+                                                                     future_offset)
 
         self.paths_calculated = True
 
@@ -248,10 +225,16 @@ class Simulation:
             if body is not self.focus_body:
                 body.render_paths()
 
+    def create_UI_bar(self):
+
+        bar_width = 250
+        bar_height = config.window_size[1]
+
+        bar_x = config.window_size[0] - bar_width
+        bar_y = 0
+
+        self.details_bar = UIBar("Details", bar_x, bar_y, bar_width, bar_height)
+
 
 sim = Simulation()
 sim.run()
-
-# References
-# https://stackoverflow.com/questions/23841128/pygame-how-to-check-mouse-coordinates
-# https://stackoverflow.com/questions/12150957/pygame-action-when-mouse-click-on-rect

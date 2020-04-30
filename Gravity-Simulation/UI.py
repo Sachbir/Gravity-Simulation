@@ -51,9 +51,9 @@ class UIBar:
             display_velocity = (round(selected_object.velocity[0], 2),
                                 round(selected_object.velocity[1], 2))
             self.draw_property("Velocity:")
-            self.draw_property("    X: " + str(round(display_velocity[0], 2)))
-            self.draw_property("    Y: " + str(round(display_velocity[1], 2)))
-            self.draw_property("Mass: " + str(round(selected_object.mass, 2)))
+            self.draw_property("    X: " + str(round(display_velocity[0], 2)) + "    (right/left)")
+            self.draw_property("    Y: " + str(round(display_velocity[1], 2)) + "    (up/down)")
+            self.draw_property("Mass: " + str(round(selected_object.mass, 2)) + "    (+/-)")
             self.draw_property("Radius: " + str(round(selected_object.radius, 2)))
 
     def draw_title(self):
@@ -85,5 +85,3 @@ class UIBar:
     def set_surface(surface):
 
         UIBar.surface = surface
-
-

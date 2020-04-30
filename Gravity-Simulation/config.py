@@ -7,4 +7,5 @@ frame_counter = 0
 
 # Other
 window_size = 960, 720
-gravitational_constant = 0.01       # Turns out determining this value matters quite a bit
+gravitational_constant = 1       # Turns out determining this value matters quite a bit
+num_future_predictions = 1000
