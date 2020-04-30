@@ -60,7 +60,7 @@ class Render:
                          border)
 
     @staticmethod
-    def draw_lines(points, color=(0, 0, 0)):
+    def draw_lines(points, color=(0, 0, 0), width=1):
 
         converted_points = deepcopy(points)
 
@@ -70,7 +70,8 @@ class Render:
         pygame.draw.lines(pygame.display.get_surface(),
                           color,
                           False,
-                          converted_points)
+                          converted_points,
+                          width)
 
     @staticmethod
     def center_on(pos):

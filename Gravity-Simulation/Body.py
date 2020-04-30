@@ -1,5 +1,6 @@
 # Math is done as if these are 3D objects operating on a 2D plane, as gravity does not work in 2 dimensions
 
+from copy import deepcopy
 from math import sqrt
 from random import uniform
 
@@ -11,11 +12,20 @@ class Body:
 
     radius_size_magnifier = 10
     change_rate = 1.1
+    min_vel = 0.1
+
+    click_precision = 5
+
+    path_color_default = 55, 55, 55
+    path_color_collision = 110, 55, 55
+
+    selection_color = 55, 55, 110
 
     def __init__(self, name, position=None):
 
         self.name = name
         self.color = 255, 255, 255
+        self.path_color = Body.path_color_default
 
         self.mass = 1
         self.velocity = 0, 0
@@ -41,6 +51,20 @@ class Body:
         self.__mass = mass
         self.radius = (self.mass * Body.radius_size_magnifier) ** (1.0 / 3)
 
+    def render(self):
+
+        Render.draw_circle(self.position, color=self.color, radius=int(self.radius))
+
+    def render_select_bubble(self):
+
+        border = int(0.1 * self.radius + 1)
+
+        Render.draw_circle(self.position, color=Body.selection_color, radius=int(self.radius + 1), border=border)
+
+    def update_position(self):
+
+        self.position = Calc.add_vector2(self.position, self.velocity)
+
     def update_velocity(self, all_bodies):
 
         for otherBody in all_bodies:
@@ -48,12 +72,14 @@ class Body:
             if otherBody == self:
                 continue
 
-            a = Body.calc_acceleration_due_to_gravity(self.position, otherBody.position, otherBody.mass)
-            v = a * config.UPS_max
+            a = self.calc_acceleration_due_to_gravity(self.position, otherBody.position, otherBody.mass)
+            # a = v / t
+            # v = a * t
+            # t = 1/60 (60 ticks/second)
+            v = a * int(config.UPS)
             self.velocity = Calc.add_vector2(self.velocity, v)
 
-    @staticmethod
-    def calc_acceleration_due_to_gravity(self_pos, other_pos, other_mass):
+    def calc_acceleration_due_to_gravity(self, self_pos, other_pos, other_mass):
 
         # F =  dir * G * m1 * m2 / r^2
         # m1 * a = dir * G * m1 * m2 / r^2
@@ -66,40 +92,35 @@ class Body:
         r = sqrt((other_pos[0] - self_pos[0]) ** 2 +
                  (other_pos[1] - self_pos[1]) ** 2)
 
+        if r < 10:
+            self.path_color = Body.path_color_collision
+
         a = config.gravitational_constant * other_mass / (r ** 2)
         a = Calc.multiply_vector2_by_factor(direction, a)
 
-        # a = v / t
-        # v = a * t
-        # t = 1/60 (60 ticks/second)
-
         return a
 
-    def update_position(self):
+    def center_values_on_focus_body(self, focus_body):
 
-        self.position = Calc.add_vector2(self.position, self.velocity)
+        self.velocity = Calc.subtract_vector2(self.velocity, focus_body.velocity)
+        self.position = Calc.subtract_vector2(self.position, focus_body.position)
 
-    def render(self):
-
-        Render.draw_circle(self.position, color=self.color, radius=int(self.radius))
-
-    def collide_point(self, point):
+    def click_point(self, point):
 
         x_sq = (point[0] - self.position[0]) ** 2
         y_sq = (point[1] - self.position[1]) ** 2
 
         dist = sqrt(x_sq + y_sq)
 
-        return dist < self.radius
+        return dist < (self.radius + Body.click_precision)
 
-    def get_offset_to_center_this(self):
+    # Methods for predicting the future path of the body
 
-        x = self.position[0] - config.window_size[0] / 2
-        y = self.position[1] - config.window_size[1] / 2
+    def render_paths(self):
 
-        return x, y
+        Render.draw_lines(self.future_positions, color=self.path_color, width=int(self.radius))
 
-    def calc_future_velocity(self, all_bodies, i):
+    def prediction_velocities(self, all_bodies, i):
 
         if i == 0:
             self.future_velocities.append(self.velocity)
@@ -112,23 +133,37 @@ class Body:
             if otherBody == self:
                 continue
 
-            a = Body.calc_acceleration_due_to_gravity(self.future_positions[i - 1],
+            a = self.calc_acceleration_due_to_gravity(self.future_positions[i - 1],
                                                       otherBody.future_positions[i - 1], otherBody.mass)
-            v = a * config.UPS_max
+            # a = v / t
+            # v = a * t
+            # t = 1/60 (60 ticks/second)
+            v = a * config.UPS
             velocity = Calc.add_vector2(velocity, v)
 
         self.future_velocities.append(velocity)
 
-    def calc_future_position(self, i):
+    def prediction_positions(self, i):
 
         if i == 0:
             self.future_positions.append(self.position)
         else:
             self.future_positions.append(Calc.add_vector2(self.future_positions[i - 1], self.future_velocities[i]))
 
-    def render_paths(self):
+    def predictions_reset(self):
 
-        Render.draw_lines(self.future_positions, color=(55, 55, 55))
+        self.future_velocities = []
+        self.future_positions = []
+        self.path_color = Body.path_color_default
+
+    def predictions_center_on_focus_body(self, focus_body):
+
+        for i in range(len(self.future_positions)):
+            future_offset = Calc.subtract_vector2(Render.offset,
+                                                  Render.calc_offset(focus_body.future_positions[i]))
+
+            self.future_positions[i] = Calc.subtract_vector2(self.future_positions[i],
+                                                             future_offset)
 
     # Methods for externally editing body properties (mass, velocity)
 
@@ -168,12 +203,12 @@ class Body:
         # if negative, divide by the change rate (shrink), if positive, multiply by the change rate (grow)
         # if it's a small value, then add so it can cross from negative to positive
 
-        if x > 0.1:
+        if x >= Body.min_vel:
             return x * Body.change_rate
-        elif x < -0.1:
+        elif x < -Body.min_vel:
             return x / Body.change_rate
         else:
-            return x + 0.1
+            return x + Body.min_vel
 
     @staticmethod
     def __dec_prop_val(x):
@@ -182,12 +217,12 @@ class Body:
         # if positive, divide by the change rate (shrink), if negative, multiply by the change rate (grow)
         # if it's a small value, then subtract so it can cross from positive to negative
 
-        if x > 0.1:
+        if x > Body.min_vel:
             return x / Body.change_rate
-        elif x < -0.1:
+        elif x <= -Body.min_vel:
             return x * Body.change_rate
         else:
-            return x - 0.1
+            return x - Body.min_vel
 
 
 class Calc:

@@ -4,7 +4,7 @@ from time import time
 from copy import deepcopy
 
 import config
-from Body import Body, Calc
+from Body import Body
 from Render import Render
 from UI import UIBar
 
@@ -55,7 +55,7 @@ class Simulation:
 
             # frame_start_time = time()
 
-            self.clock.tick(config.UPS_max)
+            self.clock.tick(config.UPS)
             pygame.display.flip()
 
             self.event_processing()
@@ -76,6 +76,8 @@ class Simulation:
                 o.render()
 
             if self.isPaused:
+                if self.selected_body is not None:
+                    self.selected_body.render_select_bubble()
                 self.details_bar.render()
 
             # Simulation.measure_update_time(frame_start_time)
@@ -104,7 +106,7 @@ class Simulation:
 
                 # check for a collision with any body
                 for body in self.allBodies:
-                    if body.collide_point(pos):
+                    if body.click_point(pos):
                         was_body_clicked = True
                         self.selected_body = body
                         # self.render_bodies()
@@ -179,11 +181,11 @@ class Simulation:
         if self.focus_body is None:
             return
 
-        temp = deepcopy(self.focus_body)
-
         for body in self.allBodies:
-            body.velocity = Calc.subtract_vector2(body.velocity, temp.velocity)
-            body.position = Calc.subtract_vector2(body.position, temp.position)
+            if body == self.focus_body:
+                continue    # Do this last do it doesn't interfere with calculations of other bodies
+            body.center_values_on_focus_body(self.focus_body)
+        self.focus_body.center_values_on_focus_body(self.focus_body)
 
     def toggle_pause(self):
 
@@ -198,24 +200,19 @@ class Simulation:
             return
 
         for body in self.allBodies:
-            body.future_velocities = []
-            body.future_positions = []
+            body.predictions_reset()
 
         for i in range(config.num_future_predictions):
             for body in self.allBodies:
-                body.calc_future_velocity(self.allBodies, i)
-                body.calc_future_position(i)
+                body.prediction_velocities(self.allBodies, i)
+            for body in self.allBodies:
+                body.prediction_positions(i)
 
         if self.focus_body is not None:
             for body in self.allBodies:
                 if body is self.focus_body:
                     continue
-                for i in range(len(body.future_positions)):
-                    future_offset = Calc.subtract_vector2(Render.offset,
-                                                          Render.calc_offset(self.focus_body.future_positions[i]))
-
-                    body.future_positions[i] = Calc.subtract_vector2(body.future_positions[i],
-                                                                     future_offset)
+                body.predictions_center_on_focus_body(self.focus_body)
 
         self.paths_calculated = True
 
