@@ -60,8 +60,12 @@ class Body:
             direction = Calc.sub_vector2(otherBody.position, self.position)
             direction = Calc.normalize_vector2(direction)
 
-            a = config.gravitational_constant * otherBody.mass / (otherBody.radius ** 2)
             a = Calc.mul_vector2_by_factor(direction, a)
+            # r is the distance between the 2 bodies' centers
+            r = sqrt((otherBody.position[0] - self.position[0]) ** 2 +
+                     (otherBody.position[1] - self.position[1]) ** 2)
+
+            a = config.gravitational_constant * otherBody.mass / (r ** 2)
 
             # a = v / t
             # v = a * t
@@ -116,8 +120,12 @@ class Body:
 
             direction = Calc.normalize_vector2(direction)
 
-            a = config.gravitational_constant * otherBody.mass / (otherBody.radius ** 2)
             a = Calc.mul_vector2_by_factor(direction, a)
+            # r is the distance between the 2 bodies' centers
+            r = sqrt((otherBody.future_positions[i - 1][0] - self.future_positions[i - 1][0]) ** 2 +
+                     (otherBody.future_positions[i - 1][1] - self.future_positions[i - 1][1]) ** 2)
+
+            a = config.gravitational_constant * otherBody.mass / (r ** 2)
 
             # a = v / t
             # v = a * t
