@@ -1,11 +1,11 @@
 # Math is done as if these are 3D objects operating on a 2D plane, as gravity does not work in 2 dimensions
 
-from copy import deepcopy
 from math import sqrt
 from random import uniform
 
 import config
 from Render import Render
+from Mutability import Mutability
 
 
 class Body:
@@ -20,6 +20,12 @@ class Body:
     path_color_collision = 110, 55, 55
 
     selection_color = 55, 55, 110
+
+    ui_properties = [["name", Mutability.STR],
+                     ["velocity_x", Mutability.NUM],
+                     ["velocity_y", Mutability.NUM],
+                     ["mass", Mutability.NUM],
+                     ["radius", Mutability.NONE]]
 
     def __init__(self, name, position=None):
 
@@ -50,6 +56,24 @@ class Body:
             return
         self.__mass = mass
         self.radius = (self.mass * Body.radius_size_magnifier) ** (1.0 / 3)
+
+    @property
+    def velocity_x(self):
+        return self.velocity[0]
+
+    @velocity_x.setter
+    def velocity_x(self, velocity_x):
+
+        self.velocity = velocity_x, self.velocity[1]
+
+    @property
+    def velocity_y(self):
+        return self.velocity[1]
+
+    @velocity_y.setter
+    def velocity_y(self, velocity_y):
+
+        self.velocity = self.velocity[0], velocity_y
 
     def render(self):
 
