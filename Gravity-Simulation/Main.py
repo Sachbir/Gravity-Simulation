@@ -202,6 +202,8 @@ class Simulation:
                 del self.EventDict[pygame.K_DOWN]
                 del self.EventDict[pygame.K_LEFT]
                 del self.EventDict[pygame.K_RIGHT]
+                del self.EventDict[pygame.K_DELETE]
+                del self.EventDict[pygame.K_BACKSPACE]
             except KeyError:
                 pass    # If the key doesn't exist, it's fine. That's the whole point
         else:
@@ -211,6 +213,20 @@ class Simulation:
             self.EventDict[pygame.K_DOWN] = self.selected_body.vel_y_dec
             self.EventDict[pygame.K_LEFT] = self.selected_body.vel_x_dec
             self.EventDict[pygame.K_RIGHT] = self.selected_body.vel_x_inc
+            self.EventDict[pygame.K_DELETE] = self.delete_selected
+            self.EventDict[pygame.K_BACKSPACE] = self.delete_selected
+
+    def delete_selected(self):
+
+        temp = self.selected_body
+
+        self.selected_body = None
+        self.allBodies.remove(temp)
+
+        if len(self.allBodies) > 0:
+            self.focus_body = self.allBodies[0]
+        else:
+            self.focus_body = None
 
     def change_focus_body(self):
 
