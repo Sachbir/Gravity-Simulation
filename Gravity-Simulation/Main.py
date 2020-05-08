@@ -19,11 +19,11 @@ class Simulation:
 
         Render.set_surface(pygame.display.get_surface())
 
-        self.allBodies = []
-        name = "Body_" + str(len(self.allBodies))
-        b = Body(name, (0, 0))
-        b.mass = 100
-        self.allBodies.append(b)
+        self.allBodies = [
+            Body(name="Sun", position=(0, 0), mass=500, colour=(255, 255, 186)),
+            Body(name="Earth", position=(-200, 0), mass=10, velocity=(0, 1.6), colour=(186, 255, 255)),
+            Body(name="Moon", position=(-215, 0), mass=1, velocity=(0, 0.8), colour=(255, 255, 255))
+        ]
 
         self.EventDict = {}
         self.set_event_dict()
@@ -142,10 +142,12 @@ class Simulation:
                         body_clicked = body
                         break
 
-                # Finally if nothing was clicked, you can make a new body
-                if not was_body_clicked:
-                    name = "Body_" + str(len(self.allBodies))
-                    o = Body(name, pos)
+                if body_clicked is not None:
+                    self.selected_body = body_clicked
+                    self.details_bar.selected_object = body_clicked
+                else:
+                    # If no body clicked, create a new one
+                    o = Body(pos)
                     self.allBodies.append(o)
                     self.selected_body = o
                     self.paths_calculated = False

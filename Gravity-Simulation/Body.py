@@ -1,6 +1,6 @@
 # Math is done as if these are 3D objects operating on a 2D plane, as gravity does not work in 2 dimensions
 
-from math import sqrt
+from math import sqrt, ceil
 from random import uniform
 
 import config
@@ -10,16 +10,16 @@ from Mutability import Mutability
 
 class Body:
 
+    body_count = 0
+
     radius_size_magnifier = 10
     change_rate = 1.1
     min_vel = 0.1
 
     click_precision = 5
 
-    path_color_default = 55, 55, 55
     path_color_collision = 110, 55, 55
-
-    selection_color = 55, 55, 110
+    selection_color = 165, 55, 55
 
     ui_properties = [["name", Mutability.STR],
                      ["velocity_x", Mutability.NUM],
@@ -27,23 +27,48 @@ class Body:
                      ["mass", Mutability.NUM],
                      ["radius", Mutability.NONE]]
 
-    def __init__(self, name, position=None):
+    def __init__(self, position, name=None, mass=1, velocity=(0, 0), colour=None):
 
-        self.name = name
-        self.color = 255, 255, 255
-        self.path_color = Body.path_color_default
-
-        self.mass = 1
-        self.velocity = 0, 0
-
-        if position is not None:
-            self.position = position
+        if name is not None:
+            self.name = name
         else:
-            self.position = (int(config.window_size[0] * uniform(1/4, 3/4)),
-                             int(config.window_size[1] * uniform(1/4, 3/4)))
+            self.name = "Body_" + str(Body.body_count)
+        Body.body_count += 1
+
+        # if position is not None:
+        self.position = position
+        # else:
+        #     self.position = (int(config.window_size[0] * uniform(1/4, 3/4)),
+        #                      int(config.window_size[1] * uniform(1/4, 3/4)))
+        self.mass = mass
+        self.velocity = velocity
+        if colour is not None:
+            self.colour = colour
+        else:
+            self.colour = Body.generate_pastel_colour()
+        self.path_colour_default = Body.generate_path_colour(self.colour)
+        self.path_colour = self.path_colour_default
 
         self.future_positions = []
         self.future_velocities = []
+
+    @staticmethod
+    def generate_pastel_colour():
+
+        r = uniform(127, 255)
+        g = uniform(127, 255)
+        b = uniform(127, 255)
+
+        return r, g, b
+
+    @staticmethod
+    def generate_path_colour(colour):
+
+        r = int(colour[0] / 2)
+        g = int(colour[1] / 2)
+        b = int(colour[2] / 2)
+
+        return r, g, b
 
     @property
     def mass(self):
@@ -77,13 +102,13 @@ class Body:
 
     def render(self):
 
-        Render.draw_circle(self.position, color=self.color, radius=int(self.radius))
+        Render.draw_circle(self.position, colour=self.colour, radius=int(self.radius))
 
     def render_select_bubble(self):
 
         border = int(0.1 * self.radius + 1)
 
-        Render.draw_circle(self.position, color=Body.selection_color, radius=int(self.radius + 1), border=border)
+        Render.draw_circle(self.position, colour=Body.selection_color, radius=int(self.radius + 1), border=border)
 
     def update_position(self):
 
@@ -117,7 +142,7 @@ class Body:
                  (other_pos[1] - self_pos[1]) ** 2)
 
         if r < 10:
-            self.path_color = Body.path_color_collision
+            self.path_colour = Body.path_color_collision
 
         a = config.gravitational_constant * other_mass / (r ** 2)
         a = Calc.multiply_vector2_by_factor(direction, a)
@@ -142,7 +167,9 @@ class Body:
 
     def render_paths(self):
 
-        Render.draw_lines(self.future_positions, color=self.path_color, width=int(self.radius))
+        path_width = ceil(self.radius / 4)
+
+        Render.draw_lines(self.future_positions, color=self.path_colour, width=path_width)
 
     def prediction_velocities(self, all_bodies, i):
 
@@ -178,7 +205,7 @@ class Body:
 
         self.future_velocities = []
         self.future_positions = []
-        self.path_color = Body.path_color_default
+        self.path_colour = self.path_colour_default
 
     def predictions_center_on_focus_body(self, focus_body):
 

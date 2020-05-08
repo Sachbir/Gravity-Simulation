@@ -32,12 +32,12 @@ class Render:
         return x, y
 
     @staticmethod
-    def draw_circle(position, radius=5, color=(0, 0, 0), border=0):
+    def draw_circle(position, radius=5, colour=(0, 0, 0), border=0):
 
-        pygame.draw.circle(pygame.display.get_surface(), color, Render.convert_to_pygame(position), radius, border)
+        pygame.draw.circle(pygame.display.get_surface(), colour, Render.convert_to_pygame(position), radius, border)
 
     @staticmethod
-    def draw_rect(rect, color=(0, 0, 0), border=0):
+    def draw_rect(rect, colour=(0, 0, 0), border=0):
 
         pos = rect[0]
         pos = pos[0], pos[1] + rect[1][1] - 1
@@ -45,7 +45,7 @@ class Render:
 
         rect = pos, rect[1]
 
-        pygame.draw.rect(pygame.display.get_surface(), color, rect, border)
+        pygame.draw.rect(pygame.display.get_surface(), colour, rect, border)
 
     @staticmethod
     def draw_line(p1, p2, color=(0, 0, 0), border=1):
