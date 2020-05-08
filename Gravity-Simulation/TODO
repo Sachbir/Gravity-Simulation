@@ -1,0 +1,7 @@
+TODO:
+
+- clean up code
+- select multiple objects and focus on their centre point
+- calculate possible collisions on the fly
+    - multithreading so it doesn't lag the simulation
+- skip frames instead of lagging

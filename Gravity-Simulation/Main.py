@@ -5,7 +5,7 @@ from time import time
 import config
 from Body import Body
 from Render import Render
-from UI import UIBar
+from UI import UIPanel
 
 
 class Simulation:
@@ -18,7 +18,6 @@ class Simulation:
         self.screen = pygame.display.set_mode(config.window_size)
 
         Render.set_surface(pygame.display.get_surface())
-        UIBar.set_surface(pygame.display.get_surface())
 
         self.allBodies = []
         name = "Body_" + str(len(self.allBodies))
@@ -40,6 +39,7 @@ class Simulation:
         self.is_in_input_mode = False
 
         self.selected_body = None
+        self.selected_input_obj = None
 
     @property
     def selected_body(self):
@@ -52,6 +52,20 @@ class Simulation:
         self.update_event_dict_for_new_selection()
         if self.details_bar is not None:
             self.details_bar.selected_object = selected_body
+
+    @property
+    def selected_input_obj(self):
+        return self.__selected_input_obj
+
+    @selected_input_obj.setter
+    def selected_input_obj(self, selected_input_obj):
+
+        if selected_input_obj is None:
+            self.details_bar.is_field_selected = False
+        else:
+            self.details_bar.is_field_selected = True
+
+        self.__selected_input_obj = selected_input_obj
 
     def run(self):
 
@@ -100,48 +114,32 @@ class Simulation:
             if event.type == pygame.QUIT:  # End simulation
                 sys.exit(0)
             elif event.type == pygame.KEYDOWN:
-                if self.is_in_input_mode:
-                    self.is_in_input_mode = self.details_bar.handle_user_input(event)
-                    self.details_bar.update()
-                    if not self.is_in_input_mode:
+
+                if self.selected_input_obj is not None:
+                    input_box = self.selected_input_obj
+                    input_box.handle_user_input(event)
+                    if not input_box.is_selected:
+                        self.selected_input_obj = None
                         self.paths_calculated = False
+                    self.details_bar.update()
                 else:
                     self.handle_keypress_event(event.key)
+
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.isPaused:
-                # get coordinates of the click
+
+                # Check if the UI was clicked
                 mouse_pos = pygame.mouse.get_pos()
+                ui_click = self.check_ui_interaction(mouse_pos)
+                if ui_click:
+                    continue
+
+                # Check if a body was clicked
                 pos = Render.convert_to_renderer(mouse_pos)
-
-
-
-                was_ui_field_clicked = self.details_bar.handle_click(mouse_pos)
-
-                # is_field_selected = self.details_bar.selected_field is not None
-
-                # First try UI click
-                if was_ui_field_clicked:
-                    self.is_in_input_mode = True
-                    self.details_bar.update()
-                    continue
-
-                # If user clicked outside UI while in input mode, cancel click and continue
-                if self.is_in_input_mode:
-                    # If anything else was clicked, deselect the details bar (if still highlighted)
-                    self.details_bar.deselect_fields()
-                    self.details_bar.update()
-                    self.is_in_input_mode = False
-                    continue
-
-                # Then check if a body was clicked
-                was_body_clicked = False
-
+                body_clicked = None
                 # check for a collision with any body
                 for body in self.allBodies:
                     if body.click_point(pos):
-                        was_body_clicked = True
-                        self.selected_body = body
-                        # self.render_bodies()
-                        # if we find a collision, no need to check further
+                        body_clicked = body
                         break
 
                 # Finally if nothing was clicked, you can make a new body
@@ -152,7 +150,33 @@ class Simulation:
                     self.selected_body = o
                     self.paths_calculated = False
 
-                self.details_bar.update()
+                self.details_bar.update(True)
+
+    def check_ui_interaction(self, mouse_pos):
+
+        obj_clicked = self.details_bar.get_input_box_clicked(mouse_pos)
+
+        # If an input box was previously selected, deselected it
+        if self.selected_input_obj is not None:
+            self.selected_input_obj.is_selected = False
+
+        if obj_clicked is not None:
+            if obj_clicked == self.selected_input_obj:
+                # If the object clicked was already selected, deselect it
+                self.selected_input_obj = None
+            else:
+                # Otherwise replace it with the new object
+                self.selected_input_obj = obj_clicked
+                self.selected_input_obj.is_selected = True
+            self.details_bar.update()
+            return True
+        elif obj_clicked is None and self.selected_input_obj is not None:
+            self.selected_input_obj = obj_clicked
+            self.details_bar.update()
+            return True
+
+        # No interaction occurred
+        return False
 
     # noinspection PyPep8Naming
     @staticmethod
@@ -288,7 +312,7 @@ class Simulation:
         bar_x = config.window_size[0] - bar_width
         bar_y = 0
 
-        self.details_bar = UIBar("Details", bar_x, bar_y, bar_width, bar_height)
+        self.details_bar = UIPanel(pygame.display.get_surface(), "Details", bar_x, bar_y, bar_width, bar_height)
 
 
 sim = Simulation()

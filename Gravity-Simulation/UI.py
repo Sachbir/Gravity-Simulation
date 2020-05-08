@@ -8,190 +8,278 @@ pygame.font.init()
 pygame.freetype.init()
 system_font = pygame.freetype.get_default_font()
 
+font_title = pygame.freetype.SysFont(system_font, 30)
+font_default = pygame.freetype.SysFont(system_font, 15)
+leading = 10
 
-class UIBar:
+
+class UIPanel:
 
     padding = 30
-    leading = 10
 
-    font_title = pygame.freetype.SysFont(system_font, 30)
-    font_default = pygame.freetype.SysFont(system_font, 15)
+    def __init__(self, main_window, title, x, y, width, height):
 
-    surface = None
-
-    def __init__(self, title, x, y, width, height):
+        self.MainWindow = main_window
 
         self.title = title
-
         self.location = x, y
         self.dimensions = width, height
 
-        self.start_draw_location = UIBar.padding, UIBar.padding
+        self.start_draw_location = UIPanel.padding, UIPanel.padding
+        self.start_draw_location_bottom = UIPanel.padding, self.dimensions[1] - UIPanel.padding
         self.draw_location = 0, 0
+        self.draw_location_bottom = 0, 0
 
-        self.s = None
+        self.surface = pygame.Surface(self.dimensions)
+        self.surface.set_alpha(172)
+
         self.fields = []
-        self.selected_field = None
+        self.is_field_selected = False
         self.selected_object = None
-
-        self.update()
 
         self.input_string = ""
 
+        self.update()
+
     def render(self):
 
-        UIBar.surface.blit(self.s, self.location)
+        self.MainWindow.blit(self.surface, self.location)
 
-    def update(self):
+    def update(self, reload_data=False):
 
-        self.s = pygame.Surface(self.dimensions)
-        self.s.set_alpha(128)
-        self.s.fill((255, 255, 255))
+        self.surface.fill((150, 150, 150))
 
         self.draw_location = self.start_draw_location
+        self.draw_text(font_title, self.title)
+        self.draw_text_keyboard_shortcuts()
 
-        self.draw_text(UIBar.font_title, self.title)
+        if self.selected_object is None:
+            self.draw_no_selection_text()
+            return
 
-        if self.selected_object is not None:
+        # If there *is* a selected object, do the rest of the function:
+
+        if reload_data:
+            self.fields = []
+
+        if len(self.fields) == 0:
             for prop in Body.ui_properties:
-                self.add_property(prop)
-
-        if self.selected_field is not None:
-            self.highlight_selected_field()
+                self.add_field(prop)
+        for field in self.fields:
+            field.draw()
 
     def draw_text(self, font, text):
 
-        font.render_to(self.s, self.draw_location, text)
+        font.render_to(self.surface, self.draw_location, text)
         self.draw_location = (self.draw_location[0],
-                              self.draw_location[1] + font.size + UIBar.leading)
+                              self.draw_location[1] + font.size + leading)
 
-    def draw_property(self, prop_name):
+    def draw_text_from_bottom(self, font, text):
 
-        if self.selected_field is not None and \
-                self.selected_field.prop_name == prop_name and \
-                self.input_string != "":
-            val = self.input_string + "|"
-        else:
-            val = UIBar.stringify_property(getattr(self.selected_object, prop_name))
+        font.render_to(self.surface, self.draw_location_bottom, text)
 
-        text = prop_name + ":  " + val
-        self.draw_text(UIBar.font_default, text)
+        self.draw_location_bottom = (self.draw_location_bottom[0],
+                                     self.draw_location_bottom[1] - font.size - leading)
 
-    def add_property(self, prop_info):
+    def add_field(self, prop_info):
 
-        start_pos = (UIBar.padding,
-                     self.draw_location[1])
-        self.draw_property(prop_info[0])
-        end_pos = (self.dimensions[0] - 2 * UIBar.padding,
-                   self.draw_location[1])
+        new_field = UIField(self.surface, self.selected_object, prop_info, self.draw_location)
+        self.draw_location = (self.draw_location[0],
+                              self.draw_location[1] + font_default.size + leading)
+        self.fields.append(new_field)
 
-        prop = UIField(prop_info, start_pos, end_pos)
-        self.fields.append(prop)
+    def get_input_box_clicked(self, mouse_pos):
 
-    def collide_point(self, point):
-
-        if (self.location[0] < point[0] < (self.location[0] + self.dimensions[0]) and
-                self.location[1] < point[1] < (self.location[1] + self.dimensions[1])):
-            return True
-        return False
-
-    def handle_click(self, mouse_pos):
+        if len(self.fields) == 0:
+            return None
 
         pos = mouse_pos[0] - self.location[0], mouse_pos[1] - self.location[1]
 
         for field in self.fields:
-            field_clicked = field.does_point_collide(pos)
-            if field_clicked:
-                if self.selected_field == field or \
-                        field.mutability == Mutability.NONE:
-                    self.selected_field = None
-                    return False
-                self.selected_field = field
-                return True
+            if field.input_box is None:
+                continue
+            if field.input_box.does_point_collide(pos):
+                return field.input_box
 
-        return False
+        return None
 
-    def highlight_selected_field(self):
+    # Honestly, because this is a personal project I'm just going to let myself hard-code the next couple functions
 
-        p0 = self.selected_field.p0[0] - 1, self.selected_field.p0[1] - 1
-        width = self.dimensions[0] - 2 * UIBar.padding
-        height = self.font_default.size + 1
+    def draw_text_keyboard_shortcuts(self):
 
-        pygame.draw.rect(self.s, (255, 55, 55), (p0, (width, height)), 1)
+        self.draw_location_bottom = self.start_draw_location_bottom
 
-    def deselect_fields(self):
+        lines = ["Click the fields above to",
+                 " manually enter values",
+                 "Quit: Q",
+                 "Pause: Space",
+                 "Delete Body: Del/Backspace",
+                 "Mass: +/-",
+                 "Vel_X: Right/Left",
+                 "Vel_Y: Up/Down"]
 
-        self.selected_field = None
-        self.input_string = ""
-
-    def handle_user_input(self, event):
-
-        if self.selected_field.mutability == Mutability.NUM:
-            return self.handle_user_input_num(event)
-        elif self.selected_field.mutability == Mutability.STR:
-            return self.handle_user_input_str(event)
-
-    def handle_user_input_num(self, event):
-        """ Used to add/remove numbers to the input
-            Returns whether the input is complete or not """
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_BACKSPACE]:
-            self.input_string = self.input_string[:-1]
-        elif event.unicode.isdigit() or event.unicode == "." or event.unicode == "-":
-            self.input_string += event.unicode
-        elif keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER]:
-            if self.input_string != "":
-                setattr(self.selected_object, self.selected_field.prop_name, float(self.input_string))
-            self.deselect_fields()
-            return False  # Input is complete
-        return True  # Input still in progress
-
-    def handle_user_input_str(self, event):
-        """ Used to add/remove characters to the input
-            Returns whether the input is complete or not """
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_BACKSPACE]:
-            self.input_string = self.input_string[:-1]
-        elif event.unicode.isalnum() or event.unicode == "_":
-            self.input_string += event.unicode
-        elif keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER]:
-            if self.input_string != "":
-                setattr(self.selected_object, self.selected_field.prop_name, self.input_string)
-            self.deselect_fields()
-            return False  # Input is complete
-        return True  # Input still in progress
-
-    @staticmethod
-    def stringify_property(val):
-
-        if isinstance(val, (int, float)):
-            return str(round(val, 2))
+        if self.is_field_selected:
+            lines.append("Deselect field: Click")
         else:
-            return str(val)
+            lines.append("Create/Select Body: Click")
 
-    @staticmethod
-    def set_surface(surface):
+        for line in reversed(lines):
+            self.draw_text_from_bottom(font_default, line)
 
-        UIBar.surface = surface
+    def draw_no_selection_text(self):
+
+        lines = ["No object selected.",
+                 "Click an object to select",
+                 "it, or click an empty space",
+                 "to create a new one."]
+
+        for line in lines:
+            self.draw_text(font_default, line)
 
 
 class UIField:
 
-    def __init__(self, prop_info, p0, p1):
+    # Fields are grouped (/parents of) input boxes because
 
+    # Kinda arbitrary - enough space for the field labels
+    left_margin_input_box = 85
+
+    def __init__(self, surface, obj, prop_info, p0):
+
+        self.surface = surface
+        self.obj = obj
         self.prop_name = prop_info[0]
         self.mutability = prop_info[1]
         self.p0 = p0
-        self.p1 = p1
+
+        self.pos_input_box = p0[0] + UIField.left_margin_input_box, p0[1]
+        self.input_box = None
+        if self.mutability != Mutability.NONE:
+            self.input_box = InputBox(surface, self.pos_input_box, obj, prop_info[0], prop_info[1])
+
+    @property
+    def is_selected(self):
+        if self.input_box is not None:
+            return self.input_box.is_selected
+        else:
+            return False
+
+    @is_selected.setter
+    def is_selected(self, is_selected):
+        self.input_box.is_selected = is_selected
+
+    def draw(self):
+
+        text = self.prop_name + ":  "
+        font_default.render_to(self.surface, self.p0, text)
+
+        if self.mutability != Mutability.NONE:
+            self.input_box.draw()
+        else:
+            attr = getattr(self.obj, self.prop_name)
+            if isinstance(attr, (int, float)):
+                attr = str(round(attr, 2))
+
+            font_default.render_to(self.surface, self.pos_input_box, attr)
+
+
+class InputBox:
+
+    max_char = 9
+
+    def __init__(self, surface, p0, obj, property_name, input_type):
+
+        self.surface = surface
+
+        self.p0 = (p0[0] - 2, p0[1] - 2)
+        self.p1 = (surface.get_width() - UIPanel.padding, p0[1] + font_default.size + 2)
+        self.obj = obj
+        self.property_name = property_name
+        self.input_type = input_type
+
+        self.dimensions = (self.p1[0] - p0[0],
+                           self.p1[1] - p0[1])
+
+        self.input_string = ""
+
+        self.is_selected = False
+
+    @property
+    def is_selected(self):
+        return self.__is_selected
+
+    @is_selected.setter
+    def is_selected(self, is_selected):
+
+        self.__is_selected = is_selected
+        if not is_selected:
+            self.input_string = ""
+
+    def draw(self):
+
+        pygame.draw.rect(self.surface, (255, 255, 255), (self.p0, self.dimensions))
+
+        position = self.p0[0] + 2, self.p0[1] + 2
+        if self.input_string != "":
+            font_default.render_to(self.surface, position, self.input_string)
+        else:
+            attr = getattr(self.obj, self.property_name)
+            if isinstance(attr, (int, float)):
+                attr = round(attr, 2)
+            font_default.render_to(self.surface, position, str(attr))
+
+        if self.is_selected:
+            # Highlight
+            pygame.draw.rect(self.surface, (255, 55, 55), (self.p0, self.dimensions), 1)
 
     def does_point_collide(self, point):
 
-        if (self.p0[0] <= point[0] <= self.p1[0] and
-                self.p0[1] <= point[1] <= self.p1[1]):
-            return True
-        return False
+        return (self.p0[0] <= point[0] <= self.p1[0] and
+                self.p0[1] <= point[1] <= self.p1[1])
 
+    def handle_user_input(self, event):
 
-# TODO: record location of each property, so when a user clicks there, they can edit the values
+        if self.input_type == Mutability.NONE:
+            return
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_BACKSPACE]:
+            self.input_string = self.input_string[:-1]
+            return
+
+        if keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER]:
+            self.save_input_value()
+            return
+
+        if len(self.input_string) >= InputBox.max_char:
+            return
+
+        if self.input_type == Mutability.NUM:
+            self.validate_input_num(event)
+        else:
+            self.validate_input_str(event)
+
+    def save_input_value(self):
+
+        if self.input_string != "":
+            try:
+                if self.input_type == Mutability.NUM:
+                    value = float(self.input_string)
+                else:
+                    value = self.input_string
+                setattr(self.obj, self.property_name, value)
+            except ValueError:
+                pass    # If saving the value fails, it'll revert to the previous value by default
+        self.is_selected = False
+
+    def validate_input_num(self, event):
+
+        if (event.unicode.isdigit() or
+                (event.unicode == "-" and len(self.input_string) == 0) or   # only first character maybe a dash
+                (event.unicode == "." and "." not in self.input_string)):   # '.' may only be entered once
+            self.input_string += event.unicode
+
+    def validate_input_str(self, event):
+
+        if event.unicode.isalnum() or event.unicode == "_":
+            self.input_string += event.unicode
