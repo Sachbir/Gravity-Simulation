@@ -84,8 +84,9 @@ class Simulation:
                     o.update_velocity(self.allBodies)
                 for o in self.allBodies:
                     o.update_position()
-
-            self.set_focus_point()
+                self.set_focus_point(False)
+            else:
+                self.set_focus_point()
 
             self.screen.fill((0, 0, 0))
             self.center_frame_on_focus()
@@ -104,27 +105,36 @@ class Simulation:
 
             # Simulation.measure_update_time(frame_start_time)
 
-    def set_focus_point(self):
+    def set_focus_point(self, copy_path=True):
 
         if len(self.focus_bodies) == 0:
             self.focus_point = None
             return
 
-        self.focus_point = Body((-100, -100))   # loc doesn't matter, never used or rendered
+        if self.focus_point is None:
+            self.focus_point = Body((-100, -100), name="Focus_Point")   # loc doesn't matter, never used or rendered
 
         self.focus_point.position = deepcopy(self.focus_bodies[0].position)
-        self.focus_point.future_positions = deepcopy(self.focus_bodies[0].future_positions)
+        if copy_path:
+            self.focus_point.future_positions = deepcopy(self.focus_bodies[0].future_positions)
+
         if len(self.focus_bodies) > 1:
             for i in range(1, len(self.focus_bodies)):
                 body = self.focus_bodies[i]
                 self.focus_point.position = Calc.add_vector2(self.focus_point.position,
                                                              body.position)
-                for j in range(len(self.focus_point.future_positions)):
-                    self.focus_point.future_positions[j] = Calc.add_vector2(self.focus_point.future_positions[j],
-                                                                            body.future_positions[j])
 
             self.focus_point.position = Calc.multiply_vector2_by_factor(self.focus_point.position,
                                                                         (1 / len(self.focus_bodies)))
+
+            if not copy_path:
+                return
+
+            for i in range(1, len(self.focus_bodies)):
+                body = self.focus_bodies[i]
+                for j in range(len(self.focus_point.future_positions)):
+                    self.focus_point.future_positions[j] = Calc.add_vector2(self.focus_point.future_positions[j],
+                                                                            body.future_positions[j])
             for i in range(len(self.focus_point.future_positions)):
                 self.focus_point.future_positions[i] = \
                     Calc.multiply_vector2_by_factor(self.focus_point.future_positions[i],
