@@ -12,6 +12,20 @@ font_title = pygame.freetype.SysFont(system_font, 30)
 font_default = pygame.freetype.SysFont(system_font, 15)
 leading = 10
 
+no_select_text = ["No object selected.",
+                  "Click an object to select",
+                  " it, or click an empty space",
+                  " to create a new one."]
+single_select_text = ["Press F to keep the camera",
+                      " focused on this object.",
+                      "Press Del/Backspace to",
+                      " delete it."]
+multi_select_text = ["Multiple objects selected.",
+                     "Press F to keep the camera",
+                     " focus on these objects.",
+                     "Press Del/Backspace to",
+                     " delete them."]
+
 
 class UIPanel:
 
@@ -35,7 +49,7 @@ class UIPanel:
 
         self.fields = []
         self.is_field_selected = False
-        self.selected_object = None
+        self.selected_objects = []
 
         self.input_string = ""
 
@@ -53,15 +67,19 @@ class UIPanel:
         self.draw_text(font_title, self.title)
         self.draw_text_keyboard_shortcuts()
 
-        if self.selected_object is None:
-            self.draw_no_selection_text()
+        if len(self.selected_objects) == 0:
+            self.draw_multiple_lines(no_select_text)
+            return
+        elif len(self.selected_objects) > 1:
+            self.draw_multiple_lines(multi_select_text)
             return
 
         # If there *is* a selected object, do the rest of the function:
 
+        self.draw_multiple_lines(single_select_text)
+
         if reload_data:
             self.fields = []
-
         if len(self.fields) == 0:
             for prop in Body.ui_properties:
                 self.add_field(prop)
@@ -83,7 +101,7 @@ class UIPanel:
 
     def add_field(self, prop_info):
 
-        new_field = UIField(self.surface, self.selected_object, prop_info, self.draw_location)
+        new_field = UIField(self.surface, self.selected_objects[0], prop_info, self.draw_location)
         self.draw_location = (self.draw_location[0],
                               self.draw_location[1] + font_default.size + leading)
         self.fields.append(new_field)
@@ -103,7 +121,12 @@ class UIPanel:
 
         return None
 
-    # Honestly, because this is a personal project I'm just going to let myself hard-code the next couple functions
+    def draw_multiple_lines(self, lines):
+
+        for line in lines:
+            self.draw_text(font_default, line)
+
+    # Honestly, because this is a personal project I'm just going to let myself hard-code for this next function
 
     def draw_text_keyboard_shortcuts(self):
 
@@ -120,21 +143,13 @@ class UIPanel:
 
         if self.is_field_selected:
             lines.append("Deselect field: Click")
+        elif len(self.selected_objects) > 0:
+            lines.append("Select/Deselect Body: Click")
         else:
-            lines.append("Create/Select Body: Click")
+            lines.append("Select/Create Body: Click")
 
         for line in reversed(lines):
             self.draw_text_from_bottom(font_default, line)
-
-    def draw_no_selection_text(self):
-
-        lines = ["No object selected.",
-                 "Click an object to select",
-                 "it, or click an empty space",
-                 "to create a new one."]
-
-        for line in lines:
-            self.draw_text(font_default, line)
 
 
 class UIField:

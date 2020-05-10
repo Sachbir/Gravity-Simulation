@@ -18,8 +18,8 @@ class Body:
 
     click_precision = 5
 
-    path_color_collision = 110, 55, 55
-    selection_color = 165, 55, 55
+    path_colour_collision = 110, 55, 55
+    selection_colour = 165, 55, 55
 
     ui_properties = [["name", Mutability.STR],
                      ["velocity_x", Mutability.NUM],
@@ -35,11 +35,7 @@ class Body:
             self.name = "Body_" + str(Body.body_count)
         Body.body_count += 1
 
-        # if position is not None:
         self.position = position
-        # else:
-        #     self.position = (int(config.window_size[0] * uniform(1/4, 3/4)),
-        #                      int(config.window_size[1] * uniform(1/4, 3/4)))
         self.mass = mass
         self.velocity = velocity
         if colour is not None:
@@ -107,8 +103,7 @@ class Body:
     def render_select_bubble(self):
 
         border = int(0.1 * self.radius + 1)
-
-        Render.draw_circle(self.position, colour=Body.selection_color, radius=int(self.radius + 1), border=border)
+        Render.draw_circle(self.position, colour=Body.selection_colour, radius=int(self.radius + 5), border=border)
 
     def update_position(self):
 
@@ -142,7 +137,7 @@ class Body:
                  (other_pos[1] - self_pos[1]) ** 2)
 
         if r < 10:
-            self.path_colour = Body.path_color_collision
+            self.path_colour = Body.path_colour_collision
 
         a = config.gravitational_constant * other_mass / (r ** 2)
         a = Calc.multiply_vector2_by_factor(direction, a)
