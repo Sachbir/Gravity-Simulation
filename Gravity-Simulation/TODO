@@ -1,8 +1,10 @@
 TODO:
 
-- clean up code
 - calculate possible collisions on the fly
     - multithreading so it doesn't lag the simulation
 - skip frames instead of lagging
 - show the path while the sim is running
-    - instead of recalculating it, just pop the first element and add one to the end
+    - instead of recalculating it, just pop the first element and add one
+        to the end
+    - currently the path is drawn, and then drifts away in space as the
+        objects are recentered. So, that'd need to be fixed

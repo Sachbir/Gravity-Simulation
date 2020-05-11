@@ -298,14 +298,16 @@ class Simulation:
 
         for body in self.selected_bodies:
             self.allBodies.remove(body)
+            if body in self.focus_bodies:
+                self.focus_bodies.remove(body)
         self.selected_bodies = []
 
-        if len(self.allBodies) > 0:
-            self.focus_bodies = [self.allBodies[0]]
-            self.set_focus_point()
-        else:
-            self.focus_bodies = []
-            self.focus_point = None
+        if len(self.focus_bodies) == 0:
+            if len(self.allBodies) > 0:
+                self.focus_bodies = [self.allBodies[0]]
+            else:
+                self.focus_bodies = []
+        self.set_focus_point()
 
     def change_focus_body(self):
 
@@ -348,6 +350,8 @@ class Simulation:
 
             for body in self.allBodies:
                 body.predictions_center_on_focus_body(self.focus_point)
+                if body.path_colour == Body.path_colour_collision:
+                    self.isPaused = True
 
         self.paths_calculated = True
 

@@ -116,14 +116,15 @@ class Body:
             if otherBody == self:
                 continue
 
-            a = self.calc_acceleration_due_to_gravity(self.position, otherBody.position, otherBody.mass)
+            a = self.calc_acceleration_due_to_gravity(self.position, otherBody.position, otherBody.mass,
+                                                      self.radius, otherBody.radius)
             # a = v / t
             # v = a * t
             # t = 1/60 (60 ticks/second)
             v = a * int(config.UPS)
             self.velocity = Calc.add_vector2(self.velocity, v)
 
-    def calc_acceleration_due_to_gravity(self, self_pos, other_pos, other_mass):
+    def calc_acceleration_due_to_gravity(self, self_pos, other_pos, other_mass, self_radius, other_radius):
 
         # F =  dir * G * m1 * m2 / r^2
         # m1 * a = dir * G * m1 * m2 / r^2
@@ -136,7 +137,7 @@ class Body:
         r = sqrt((other_pos[0] - self_pos[0]) ** 2 +
                  (other_pos[1] - self_pos[1]) ** 2)
 
-        if r < 10:
+        if r < (self_radius + other_radius):
             self.path_colour = Body.path_colour_collision
 
         a = config.gravitational_constant * other_mass / (r ** 2)
@@ -180,7 +181,8 @@ class Body:
                 continue
 
             a = self.calc_acceleration_due_to_gravity(self.future_positions[i - 1],
-                                                      otherBody.future_positions[i - 1], otherBody.mass)
+                                                      otherBody.future_positions[i - 1], otherBody.mass,
+                                                      self.radius, otherBody.radius)
             # a = v / t
             # v = a * t
             # t = 1/60 (60 ticks/second)
